@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>LQR 제어기 시뮬레이터</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 20px auto; }
+    h1, h2 { text-align: center; }
+    label { display: block; margin-top: 10px; }
+    input[type=range] { width: 100%; }
+    #graph { height: 300px; }
+  </style>
+</head>
+<body>
+
+<h1>📘 LQR 제어기 시뮬레이터</h1>
+
+<section>
+  <label>Q (상태 가중치): <span id="qVal">1.0</span></label>
+  <input type="range" id="Q" min="0.1" max="5.0" step="0.1" value="1.0" />
+
+  <label>R (입력 가중치): <span id="rVal">1.0</span></label>
+  <input type="range" id="R" min="0.1" max="5.0" step="0.1" value="1.0" />
+</section>
+
+<canvas id="graph"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const t = Array.from({length: 500}, (_, i) => i * 0.02);
+const dt = 0.02;
+
+// 시스템 상태공간: dx/dt = Ax + Bu
+const A = [[0, 1], [0, -1]];
+const B = [[0], [1]];
+const C = [1, 0];
+const x0 = [1, 0];
+
+function simulateLQR(Qval, Rval) {
+  // 간단화된 K = [q, r] 형태로 근사
+  const K = [Qval, Rval];
+  let x = [...x0];
+  const output = [];
+
+  for (let i = 0; i < t.length; i++) {
+    const u = -K[0]*x[0] - K[1]*x[1];
+    const dx1 = x[1];
+    const dx2 = -x[1] + u;
+    x[0] += dx1 * dt;
+    x[1] += dx2 * dt;
+    const y = C[0]*x[0] + C[1]*x[1];
+    output.push(y);
+  }
+
+  return output;
+}
+
+const ctx = document.getElementById("graph").getContext("2d");
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: t,
+    datasets: [{
+      label: '시스템 응답 (y)',
+      data: [],
+      borderColor: 'green',
+      fill: false
+    }]
+  },
+  options: {
+    scales: {
+      x: { title: { display: true, text: '시간 (s)' } },
+      y: { title: { display: true, text: '출력 y(t)' }, min: -0.5, max: 1.5 }
+    }
+  }
+});
+
+function updateChart() {
+  const Q = parseFloat(document.getElementById("Q").value);
+  const R = parseFloat(document.getElementById("R").value);
+
+  document.getElementById("qVal").textContent = Q;
+  document.getElementById("rVal").textContent = R;
+
+  const y = simulateLQR(Q, R);
+  chart.data.datasets[0].data = y;
+  chart.update();
+}
+
+document.querySelectorAll("input").forEach(input =>
+  input.addEventListener("input", updateChart)
+);
+
+updateChart();
+</script>
+
+</body>
+</html>
